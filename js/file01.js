@@ -1,6 +1,8 @@
 "use strict";
-import { fetchFakerData } from './functions.js';
 
+// Importar las funciones necesarias desde firebase.js
+import { saveVote } from './firebase.js';
+import { fetchFakerData } from './functions.js';
 
 (function () {
     const welcomeMessage = "¡Bienvenido a nuestra página!";
@@ -25,7 +27,6 @@ const showVideo = () => {
 };
 
 const loadData = async () => {
-
     const url = 'https://fakerapi.it/api/v2/texts?_quantity=10&_characters=120';
 
     try {
@@ -41,14 +42,9 @@ const loadData = async () => {
             renderCards(result.body.data);
             console.log('Datos obtenidos con éxito:', result.body);
         }
-
-
     } catch (error) {
-
         console.error('Ocurrió un error inesperado:', error);
-
     }
-
 };
 
 const renderCards = (items) => {
@@ -70,9 +66,56 @@ const renderCards = (items) => {
     });
 };
 
+/**
+ * Habilita el formulario de votación, añadiendo un listener para el evento submit.
+ */
+function enableForm() {
+    // Selecciona el formulario HTML que tenga el identificador 'form_voting'.
+    const votingForm = document.getElementById('form_voting');
+    const productSelect = document.getElementById('select_product');
+    const resultsDiv = document.getElementById('results'); // Para mensajes de feedback
+
+    if (!votingForm || !productSelect || !resultsDiv) {
+        console.error('Error: No se encontraron los elementos HTML del formulario de votación. Asegúrate de que los IDs "form_voting", "select_product" y "results" existen en tu HTML.');
+        return; // Salir si los elementos no existen
+    }
+
+    // Agrega un listener de eventos al formulario que reaccione cuando se envíe (submit).
+    votingForm.addEventListener('submit', async (event) => {
+        // Prevenga el comportamiento por defecto del formulario (evita la recarga de la página).
+        event.preventDefault();
+
+        // Obtener el valor del campo de selección que tenga el identificador 'select_product'.
+        const selectedProduct = productSelect.value;
+
+        // Validar que se haya seleccionado un producto
+        if (!selectedProduct) {
+            resultsDiv.innerHTML = '<p class="text-red-600 text-center mt-4">Por favor, selecciona un producto antes de votar.</p>';
+            return;
+        }
+
+        // Opcional: Mostrar un mensaje mientras se envía el voto
+        resultsDiv.innerHTML = '<p class="text-blue-600 text-center mt-4">Enviando tu voto...</p>';
+
+        // Llame a la función saveVote pasando el valor obtenido del campo de texto.
+        const result = await saveVote(selectedProduct);
+
+        // Manejar el resultado de la operación
+        if (result.success) {
+            resultsDiv.innerHTML = `<p class="text-green-600 text-center mt-4">${result.message}</p>`;
+            // Limpia el formulario después de enviarlo (resetea la selección)
+            productSelect.value = '';
+            // Una mejor práctica es volver a poner el valor 'disabled selected'
+            // productSelect.options[0].selected = true; // Si la primera opción es el placeholder.
+        } else {
+            resultsDiv.innerHTML = `<p class="text-red-600 text-center mt-4">${result.message}</p>`;
+        }
+    });
+}
 
 (() => {
     showToast();
     showVideo();
     loadData();
+    enableForm(); // Inicializa el formulario de votación
 })();
